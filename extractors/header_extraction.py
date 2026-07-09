@@ -20,7 +20,7 @@ _KNOWN_HEADERS = [
     'Rate', 'Foreign Value', 'Origin', 'Goods Description', 'H.S. Code',
     'Unified Customs Code', 'GCC AEO Code', 'Other Remarks',
     'الرقم المرجعي الموحد للمستورد/ المصدر', 'الرقم المرجعي الموحد للمستورد/المصدر',
-    'الرقم المرجعي الموحد', 'الرقم المرجعي'
+    'الرقم المرجعي الموحد', 'الرقم المرجعي', 'Currency'
 ]
 
 def _is_header(text: str) -> bool:
@@ -87,22 +87,22 @@ def _find_coord_line_index(lines: list[list[dict]], *keywords) -> int:
 
 def _get_words_in_col(words: list[dict], col_beg: float, col_end: float) -> str:
     """Get words whose horizontal center is within the column boundaries."""
-    col_words = [w["text"] for w in words if col_beg <= (w["x0"] + w["x1"]) / 2 <= col_end]
+    col_words = [w["text"] for w in words if col_beg <= (w.get("rel_x0", 0) + w.get("rel_x1", 0)) / 2 <= col_end]
     return " ".join(col_words)
 
 #── header coordinates (x axis) ───────────────
 
-col_beg_1 = 12
-col_end_1 = 196
-col_beg_2 = 201
-col_end_2 = 377
-col_beg_3 = 383
-col_end_3 = 582
+col_beg_1 = 12 / 595.25
+col_end_1 = 196 / 595.25
+col_beg_2 = 201 / 595.25
+col_end_2 = 377 / 595.25
+col_beg_3 = 383 / 595.25
+col_end_3 = 582 / 595.25
 
 #── header coordinates (y axis) ───────────────
 
-field_17_19_beg_y = 568
-field_17_19_end_y = 477
+field_17_19_beg_y = 568 / 841.85
+field_17_19_end_y = 477 / 841.85
 
 def extract_header(pdf_or_pages: str | list[str], filename: str) -> dict:
 
@@ -225,18 +225,17 @@ def extract_header(pdf_or_pages: str | list[str], filename: str) -> dict:
     
     awb_words = []
     marks_words = []
-    PAGE_HEIGHT = 841.89  # Standard A4 height in points to convert top-down to bottom-up
 
     for line in coord_lines:
         if not line: continue
-        line_top = min(w["top"] for w in line)
-        line_bottom = max(w["bottom"] for w in line)
-        line_mid = (line_top + line_bottom) / 2
+        line_rel_top = min(w.get("rel_top", 0) for w in line)
+        line_rel_bottom = max(w.get("rel_bottom", 0) for w in line)
+        line_rel_mid = (line_rel_top + line_rel_bottom) / 2
         
-        # Convert to bottom-up Y to match user's coordinates (beg_y=568, end_y=477)
-        line_y_bottom_up = PAGE_HEIGHT - line_mid
+        # Convert to bottom-up relative Y
+        line_rel_y_bottom_up = 1.0 - line_rel_mid
         
-        if min(field_17_19_end_y, field_17_19_beg_y) <= line_y_bottom_up <= max(field_17_19_end_y, field_17_19_beg_y):
+        if min(field_17_19_end_y, field_17_19_beg_y) <= line_rel_y_bottom_up <= max(field_17_19_end_y, field_17_19_beg_y):
             # col 3 for AWB
             awb_text = _get_words_in_col(line, col_beg_3, col_end_3)
             if awb_text and not _is_header(awb_text):

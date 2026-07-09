@@ -28,7 +28,7 @@ _LINE_ITEM_PT1_RE = re.compile(
     # 8. origin (MANDATORY)
     r"(?P<origin>(?:[A-Z]{2}|[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF()]+(?:\s+[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF()]+)*))"
     # 9. Spacing Gap (MANDATORY WALL Anchor)
-    r"\s{2,}"
+    r"\s+"
     # 10. goods_description (MANDATORY)
     r"(?P<goods_description>.*?)\s+"
     # 11. hs_code (MANDATORY ANCHOR)
@@ -52,11 +52,12 @@ _LINE_ITEM_PT2_RE = re.compile(
     # 3. aip_no (OPTIONAL: digits and comma only, no float)
     r"(?:(?P<aip_no>\d+(?:,\d{3})*)\s{3,})?"
     
-    # 4. gross_weight (MANDATORY: digits, comma, float point; allows optional duplicate rendering value separated by a space)
-    r"(?P<gross_weight>\d+(?:,\d{3})*(?:\.\d+)?(?:\s+\d+(?:,\d{3})*(?:\.\d+)?)?)\s{3,}"
+    # 4. gross_weight and optional double rendering
+    r"(?P<gross_weight>\d+(?:,\d{3})*(?:\.\d+)?)"
+    r"(?:\s+\d+(?:,\d{3})*(?:\.\d+)?)?\s+"  # Optional double rendering swallowed
     
-    # 5. net_weight (MANDATORY: digits, comma, float point)
-    r"(?P<net_weight>\d+(?:,\d{3})*(?:\.\d+)?)\s{3,}"
+    # 5. net_weight
+    r"(?P<net_weight>\d+(?:,\d{3})*(?:\.\d+)?)\s+"
     
     # 6. unit (MANDATORY: English, Arabic, allows internal 1-2 spaces)
     r"(?P<unit>[a-zA-Z" + _AR_CHARS + r"]+(?:\s{1,2}[a-zA-Z" + _AR_CHARS + r"]+)*)\s{3,}"

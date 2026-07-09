@@ -13,6 +13,33 @@ logger = get_logger("pdf_to_text")
 class NonNativePdfError(Exception):
     """Raised when a PDF appears to be image/scanned instead of native text-based."""
 
+def _deduplicate_words_by_coords(words: list[dict], x_tolerance: float = 2.0, y_tolerance: float = 2.0) -> list[dict]:
+    """
+    Removes duplicate words that appear microscopically close or have exact same coordinates.
+    This handles OCR artifacts where a word is double-read.
+    """
+    if not words:
+        return words
+        
+    accepted_words = []
+    for w in words:
+        is_duplicate = False
+        # Check against recently accepted words
+        for aw in accepted_words[-10:]:
+            if w["text"] == aw["text"]:
+                cx1 = (w["x0"] + w["x1"]) / 2
+                cy1 = (w["top"] + w["bottom"]) / 2
+                cx2 = (aw["x0"] + aw["x1"]) / 2
+                cy2 = (aw["top"] + aw["bottom"]) / 2
+                
+                if abs(cx1 - cx2) <= x_tolerance and abs(cy1 - cy2) <= y_tolerance:
+                    is_duplicate = True
+                    break
+        if not is_duplicate:
+            accepted_words.append(w)
+            
+    return accepted_words
+
 def extract_pages(pdf_path: str) -> list[str]:
     """
     Open the PDF and return a list of raw text strings, one per page.
@@ -59,6 +86,7 @@ def extract_pages2(pdf_path: str) -> list[str]:
 
         for i, page in enumerate(pdf.pages, start=1):
             words = page.extract_words()
+            words = _deduplicate_words_by_coords(words)
             has_images = bool(getattr(page, "images", None))
             
             if not words:
@@ -120,6 +148,7 @@ def extract_pages_custom(pdf_path: str, y_tolerance: float = 5, use_text_flow: b
                 keep_blank_chars=False,
                 use_text_flow=use_text_flow,
             )
+            words = _deduplicate_words_by_coords(words)
             has_images = bool(getattr(page, "images", None))
             
             if not words:
@@ -167,19 +196,26 @@ def extract_words_with_coords(pdf_path: str) -> list[list[dict]]:
     """
     Return words with their bounding-box coordinates for each page.
     Used by extractors that need positional parsing (e.g. line items).
-    Each word dict has: text, x0, top, x1, bottom, page_no
+    Each word dict has: text, x0, top, x1, bottom, page_no, rel_x0, rel_top, rel_x1, rel_bottom
     """
     all_pages = []
     with pdfplumber.open(pdf_path) as pdf:
         for i, page in enumerate(pdf.pages, start=1):
+            width = page.width or 1
+            height = page.height or 1
             words = page.extract_words(
                 x_tolerance=3,
                 y_tolerance=3,
                 keep_blank_chars=False,
                 use_text_flow=True,
             )
+            words = _deduplicate_words_by_coords(words)
             for w in words:
                 w["page_no"] = i
+                w["rel_x0"] = float(w["x0"]) / float(width)
+                w["rel_x1"] = float(w["x1"]) / float(width)
+                w["rel_top"] = float(w["top"]) / float(height)
+                w["rel_bottom"] = float(w["bottom"]) / float(height)
             all_pages.append(words)
     return all_pages
 

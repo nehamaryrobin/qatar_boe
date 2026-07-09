@@ -8,6 +8,15 @@ from bidi.algorithm import get_display
 _AR_RE = re.compile(r'[\u0600-\u06FF\uFE70-\uFEFF]')
 
 
+def remove_duplicate_words(text: str) -> str:
+    """
+    Deprecated: Duplicate word removal is now handled at the PDF coordinate layer
+    (_deduplicate_words_by_coords) to avoid dropping valid text like 'bora bora'.
+    This function now just returns the text unchanged.
+    """
+    return text
+
+
 def fix_arabic(text: str) -> str:
     """
     Three-stage Arabic text correction:
@@ -29,6 +38,7 @@ def clean(value) -> str | None:
     text = str(value).strip()
     if not text:
         return None
+    text = remove_duplicate_words(text)
     return fix_arabic(text)
 
 
